@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://telegram.org; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Штурман — дневник</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: var(--tg-theme-bg-color, #10151d);
+      --card: var(--tg-theme-secondary-bg-color, #1b2430);
+      --text: var(--tg-theme-text-color, #eef3f8);
+      --muted: var(--tg-theme-hint-color, #9aa8b8);
+      --accent: var(--tg-theme-button-color, #7cc4a3);
+      --accent-text: var(--tg-theme-button-text-color, #0d2119);
+      --line: rgba(154, 168, 184, .25);
+      --warning: #e4b56b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button, input, textarea { font: inherit; }
+    button, input, textarea { -webkit-tap-highlight-color: transparent; }
+    button { cursor: pointer; }
+    button:disabled { cursor: default; opacity: .45; }
+    .app { width: min(100%, 680px); margin: 0 auto; padding: 18px 14px 110px; }
+    header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { font-size: 24px; line-height: 1.15; margin-bottom: 5px; }
+    h2 { font-size: 20px; margin-bottom: 12px; }
+    h3 { font-size: 15px; margin-bottom: 8px; }
+    .subtitle, .hint, small { color: var(--muted); }
+    .subtitle { margin-bottom: 0; }
+    #connection-status {
+      flex: 0 0 auto; max-width: 190px; padding: 5px 9px; border: 1px solid var(--line);
+      border-radius: 999px; color: var(--muted); font-size: 12px; text-align: center;
+    }
+    nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 18px; }
+    nav button {
+      min-height: 44px; padding: 8px 4px; border: 0; border-radius: 10px;
+      background: var(--card); color: var(--muted); font-size: 12px;
+    }
+    nav button.active { background: var(--accent); color: var(--accent-text); font-weight: 700; }
+    section[hidden], [hidden] { display: none !important; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      padding: 14px; margin-bottom: 12px;
+    }
+    .facet-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+    .facet { margin: 0; padding: 13px; border-radius: 12px; background: var(--bg); }
+    .facet dt { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .04em; }
+    .facet dd { margin: 5px 0 0; font-size: 25px; font-weight: 750; }
+    .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .summary p { margin: 0; }
+    .summary strong { display: block; font-size: 20px; margin-top: 3px; }
+    label { display: block; color: var(--muted); font-weight: 600; margin: 12px 0 6px; }
+    input[type="text"], input[type="date"], textarea {
+      display: block; width: 100%; border: 1px solid var(--line); border-radius: 10px;
+      background: var(--bg); color: var(--text); padding: 11px; outline: none;
+    }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    textarea { min-height: 105px; resize: vertical; }
+    .slider-row { display: grid; grid-template-columns: 76px 1fr 25px; align-items: center; gap: 9px; margin: 13px 0; }
+    .slider-row label { margin: 0; color: var(--text); }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    output { font-weight: 750; text-align: right; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .button {
+      min-height: 42px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 10px;
+      background: var(--card); color: var(--text); font-weight: 650;
+    }
+    .button.primary { border-color: var(--accent); background: var(--accent); color: var(--accent-text); }
+    .button.small { min-height: 34px; padding: 6px 10px; font-size: 13px; }
+    .list { display: grid; gap: 9px; }
+    .list-item { padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+    .list-item p { white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: 8px; }
+    .list-item small { display: block; overflow-wrap: anywhere; }
+    .list-item.done p { text-decoration: line-through; color: var(--muted); }
+    .empty { color: var(--muted); padding: 14px 0; }
+    .resource-saved { margin: 10px 0 0; color: var(--muted); }
+    #send-panel {
+      position: fixed; z-index: 2; bottom: 0; left: 0; right: 0;
+      background: var(--bg); border-top: 1px solid var(--line); padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    }
+    .send-inner { width: min(100%, 652px); margin: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    #pending-packages { width: min(100%, 652px); max-height: 150px; overflow-y: auto; margin: 8px auto 0; }
+    #pending-packages:empty { display: none; }
+    #pending-packages .list-item { padding: 9px; }
+    #pending-packages small { display: block; overflow-wrap: anywhere; }
+    #pending-packages .actions { margin-top: 6px; }
+    #pending-count { flex: 1; margin: 0; color: var(--muted); font-size: 13px; }
+    #status { min-height: 42px; margin: 14px 0 0; padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--card); overflow-wrap: anywhere; }
+    .local-note { margin: 14px 0; color: var(--muted); font-size: 12px; }
+    @media (max-width: 390px) {
+      .app { padding-left: 10px; padding-right: 10px; }
+      header { display: block; }
+      #connection-status { display: inline-block; margin-top: 10px; max-width: none; }
+      .summary { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>Штурман</h1>
+        <p class="subtitle">Дневник, ресурс и задачи — без отдельного backend.</p>
+      </div>
+      <span id="connection-status">Проверяю Telegram…</span>
+    </header>
+
+    <nav aria-label="Экраны">
+      <button type="button" data-screen="dashboard" class="active" aria-current="page">Дашборд</button>
+      <button type="button" data-screen="notes">Заметки</button>
+      <button type="button" data-screen="resource">Ресурс</button>
+      <button type="button" data-screen="tasks">Задачи</button>
+    </nav>
+
+    <main>
+      <section id="screen-dashboard" aria-labelledby="dashboard-title">
+        <h2 id="dashboard-title">Локальный дашборд</h2>
+        <p class="hint">Счётчики рассчитаны по данным этого устройства, а не прочитаны с сервера.</p>
+        <dl class="facet-grid" aria-label="Грани по локальным заметкам">
+          <div class="facet"><dt>MIND · мышление</dt><dd id="facet-mind">0</dd></div>
+          <div class="facet"><dt>WORK · структура</dt><dd id="facet-work">0</dd></div>
+          <div class="facet"><dt>VOICE · речь</dt><dd id="facet-voice">0</dd></div>
+          <div class="facet"><dt>BODY · тело</dt><dd id="facet-body">0</dd></div>
+        </dl>
+        <div class="card" style="margin-top: 12px">
+          <div class="summary">
+            <p>Открытые задачи локально<strong id="dashboard-open-tasks">0</strong></p>
+            <p>Просадка ресурса сегодня<strong id="dashboard-drop">—</strong></p>
+          </div>
+          <p id="dashboard-drop-details" class="hint" style="margin: 12px 0 0">Сохраните входной и выходной замеры.</p>
+        </div>
+        <div class="card">
+          <h3>Как работает отправка</h3>
+          <p class="hint">Сначала данные записываются в localStorage. «Отправить всё» делит большой снимок на порции до 4096 байт. Повтор безопасен: бот дедуплицирует элементы.</p>
+        </div>
+      </section>
+
+      <section id="screen-notes" aria-labelledby="notes-title" hidden>
+        <h2 id="notes-title">Быстрая заметка</h2>
+        <form id="note-form" class="card">
+          <label for="note-text">Текст заметки</label>
+          <textarea id="note-text" maxlength="2000" required placeholder="Что произошло? Какую мысль хочется сохранить?"></textarea>
+          <div class="actions"><button class="button primary" type="submit">Добавить заметку</button></div>
+          <p class="hint" style="margin: 10px 0 0">После добавления используйте «Отправить» у записи или общий пакет внизу.</p>
+        </form>
+        <h3>Заметки на этом устройстве</h3>
+        <div id="notes-list" class="list"></div>
+      </section>
+
+      <section id="screen-resource" aria-labelledby="resource-title" hidden>
+        <h2 id="resource-title">Ресурс: голова, тело, настрой</h2>
+        <p class="hint">Дата: <span id="resource-date"></span>. Оценки — целые числа от 1 до 5.</p>
+        <div class="card">
+          <div class="slider-row">
+            <label for="slider-head">Голова</label>
+            <input id="slider-head" type="range" min="1" max="5" step="1" value="3">
+            <output id="value-head" for="slider-head">3</output>
+          </div>
+          <div class="slider-row">
+            <label for="slider-body">Тело</label>
+            <input id="slider-body" type="range" min="1" max="5" step="1" value="3">
+            <output id="value-body" for="slider-body">3</output>
+          </div>
+          <div class="slider-row">
+            <label for="slider-mood">Настрой</label>
+            <input id="slider-mood" type="range" min="1" max="5" step="1" value="3">
+            <output id="value-mood" for="slider-mood">3</output>
+          </div>
+          <div class="actions">
+            <button class="button primary" type="button" id="save-entry">Сохранить входной замер</button>
+            <button class="button" type="button" id="save-exit">Сохранить выходной замер</button>
+          </div>
+          <p id="resource-saved" class="resource-saved">Замеров за сегодня пока нет.</p>
+        </div>
+        <p class="hint">После сохранения передайте данные кнопкой «Отправить всё». Повторная оценка той же фазы заменяет локальное значение.</p>
+      </section>
+
+      <section id="screen-tasks" aria-labelledby="tasks-title" hidden>
+        <h2 id="tasks-title">Задачи</h2>
+        <form id="task-form" class="card">
+          <label for="task-text">Что нужно сделать?</label>
+          <input id="task-text" type="text" maxlength="1000" required>
+          <label for="task-due">Дедлайн (необязательно)</label>
+          <input id="task-due" type="date">
+          <label for="task-reason">Причина дедлайна — обязательна, если выбрана дата</label>
+          <input id="task-reason" type="text" maxlength="500" placeholder="Почему срок именно такой?">
+          <div class="actions"><button class="button primary" type="submit">Добавить задачу</button></div>
+        </form>
+
+        <form id="reschedule-form" class="card" hidden>
+          <h3>Перенос срока</h3>
+          <p id="reschedule-task-name" class="hint"></p>
+          <label for="reschedule-date">Новая дата</label>
+          <input id="reschedule-date" type="date" required>
+          <label for="reschedule-reason">Причина переноса (обязательно)</label>
+          <input id="reschedule-reason" type="text" maxlength="500" required>
+          <div class="actions">
+            <button class="button primary" type="submit">Сохранить перенос</button>
+            <button class="button" type="button" id="cancel-reschedule">Отмена</button>
+          </div>
+        </form>
+
+        <p class="hint">Список локальный. Изменения, сделанные командами бота вне Mini App, сюда автоматически не загружаются.</p>
+        <div id="tasks-list" class="list"></div>
+      </section>
+    </main>
+
+    <p id="status" role="status" aria-live="polite">Данные хранятся локально и будут восстановлены после перезагрузки.</p>
+    <p class="local-note">Нет внешних шрифтов, CDN, аналитики или сетевых запросов к собственному API.</p>
+  </div>
+
+  <div id="send-panel">
+    <div class="send-inner">
+      <p id="pending-count">Нет ожидающих данных</p>
+      <button class="button" type="button" id="retry-all" hidden>Повторить / отправить следующий пакет</button>
+      <button class="button primary" type="button" id="send-all">Отправить всё</button>
+    </div>
+    <div id="pending-packages" class="list" aria-label="Сохранённые pending-пакеты"></div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const STORAGE_KEY = 'life-rpg-miniapp-v1';
+      const MAX_DATA_BYTES = 4096;
+      const telegram = window.Telegram && window.Telegram.WebApp;
+      const byId = id => document.getElementById(id);
+      const statusNode = byId('status');
+      let storageAvailable = true;
+      let rescheduleTaskId = null;
+
+      function setStatus(message) {
+        statusNode.textContent = message;
+      }
+
+      function localDate(value = new Date()) {
+        const year = value.getFullYear();
+        const month = String(value.getMonth() + 1).padStart(2, '0');
+        const day = String(value.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+
+      function isRealDate(value) {
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+        if (!match) return false;
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        const day = Number(match[3]);
+        const parsed = new Date(Date.UTC(year, month - 1, day));
+        return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
+      }
+
+      function createId(prefix) {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+          return `${prefix}-${window.crypto.randomUUID()}`;
+        }
+        return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+      }
+
+      function blankState() {
+        return { version: 1, notes: [], tasks: [], resources: {}, pendingPackages: [] };
+      }
+
+      function validId(value) {
+        return typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(value);
+      }
+
+      function validText(value, maximum) {
+        return typeof value === 'string' && value.trim().length > 0 && value.length <= maximum;
+      }
+
+      function normalizeState(value) {
+        const clean = blankState();
+        if (!value || typeof value !== 'object') return clean;
+        if (Array.isArray(value.notes)) {
+          clean.notes = value.notes.filter(item => item && validId(item.id) && validText(item.text, 2000)).map(item => ({
+            id: item.id,
+            text: item.text,
+            pending: item.pending !== false,
+          }));
+        }
+        if (Array.isArray(value.tasks)) {
+          clean.tasks = value.tasks.filter(item => item && validId(item.id) && validText(item.text, 1000) && isRealDate(item.date)).map(item => ({
+            id: item.id,
+            text: item.text,
+            date: item.date,
+            ...(isRealDate(item.due) ? { due: item.due, reason: String(item.reason || '') } : {}),
+            done: item.done === true,
+            ...(item.done === true && isRealDate(item.doneDate) ? { doneDate: item.doneDate } : {}),
+            reschedules: Array.isArray(item.reschedules) ? item.reschedules.filter(change =>
+              change && isRealDate(change.to) && isRealDate(change.at) && validText(change.reason, 500),
+            ).map(change => ({
+              ...(isRealDate(change.from) ? { from: change.from } : {}),
+              to: change.to,
+              reason: change.reason,
+              at: change.at,
+            })) : [],
+            pending: item.pending !== false,
+          })).filter(item => !item.done || item.doneDate);
+        }
+        if (value.resources && typeof value.resources === 'object' && !Array.isArray(value.resources)) {
+          for (const [date, phases] of Object.entries(value.resources)) {
+            if (!isRealDate(date) || !phases || typeof phases !== 'object') continue;
+            clean.resources[date] = {};
+            for (const phase of ['entry', 'exit']) {
+              const measure = phases[phase];
+              if (!measure) continue;
+              const values = [measure.head, measure.body, measure.mood];
+              if (!values.every(number => Number.isInteger(number) && number >= 1 && number <= 5)) continue;
+              clean.resources[date][phase] = {
+                head: measure.head,
+                body: measure.body,
+                mood: measure.mood,
+                pending: measure.pending !== false,
+              };
+            }
+          }
+        }
+        if (Array.isArray(value.pendingPackages)) {
+          for (const packet of value.pendingPackages) {
+            if (!packet || !validId(packet.clientId) || typeof packet.data !== 'string') continue;
+            try {
+              const parsed = JSON.parse(packet.data);
+              if (parsed.clientId !== packet.clientId || packageSize(parsed) > MAX_DATA_BYTES) continue;
+              clean.pendingPackages.push({ clientId: packet.clientId, data: packet.data });
+            } catch {
+              // Повреждённый пакет не отправляем; остальные локальные данные сохраняем.
+            }
+          }
+        }
+        return clean;
+      }
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          return raw ? normalizeState(JSON.parse(raw)) : blankState();
+        } catch {
+          storageAvailable = false;
+          return blankState();
+        }
+      }
+
+      let state = loadState();
+
+      function persist() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          storageAvailable = true;
+          return true;
+        } catch {
+          storageAvailable = false;
+          setStatus('Браузер не разрешил localStorage. Не закрывайте страницу: отправка остановлена, чтобы не потерять данные.');
+          return false;
+        }
+      }
+
+      function pendingResources() {
+        const result = [];
+        for (const [date, phases] of Object.entries(state.resources)) {
+          for (const phase of ['entry', 'exit']) {
+            const measure = phases[phase];
+            if (measure && measure.pending) {
+              result.push({ date, phase, head: measure.head, body: measure.body, mood: measure.mood });
+            }
+          }
+        }
+        return result;
+      }
+
+      function notePayload(note) {
+        return { id: note.id, text: note.text };
+      }
+
+      function taskPayload(task) {
+        return {
+          id: task.id,
+          text: task.text,
+          date: task.date,
+          ...(task.due ? { due: task.due, reason: task.reason } : {}),
+          done: task.done,
+          ...(task.doneDate ? { doneDate: task.doneDate } : {}),
+          reschedules: task.reschedules.map(change => ({ ...change })),
+        };
+      }
+
+      function packageSize(payload) {
+        return new TextEncoder().encode(JSON.stringify(payload)).byteLength;
+      }
+
+      function emptyPackageBody() {
+        return { version: 1, notes: [], resources: [], tasks: [] };
+      }
+
+      function splitPackageBody(body) {
+        const chunks = [];
+        let current = emptyPackageBody();
+        let clientId = createId('package');
+        let itemCount = 0;
+        for (const field of ['notes', 'tasks', 'resources']) {
+          for (const item of body[field]) {
+            let candidate = { ...current, [field]: [...current[field], item] };
+            if (packageSize({ clientId, ...candidate }) > MAX_DATA_BYTES) {
+              if (itemCount > 0) {
+                chunks.push({ clientId, body: current });
+                current = emptyPackageBody();
+                clientId = createId('package');
+                itemCount = 0;
+                candidate = { ...current, [field]: [item] };
+              }
+              if (packageSize({ clientId, ...candidate }) > MAX_DATA_BYTES) return null;
+            }
+            current = candidate;
+            itemCount += 1;
+          }
+        }
+        if (itemCount > 0) chunks.push({ clientId, body: current });
+        return chunks;
+      }
+
+      function samePacketBody(packet, body) {
+        const { clientId: ignored, ...storedBody } = JSON.parse(packet.data);
+        return JSON.stringify(storedBody) === JSON.stringify(body);
+      }
+
+      function transmit(body) {
+        if (!telegram || typeof telegram.sendData !== 'function' || !telegram.initData) {
+          setStatus('Отправка доступна внутри Telegram. Откройте Mini App кнопкой из команды /app; локальные данные сохранены.');
+          return false;
+        }
+        const chunks = splitPackageBody(body);
+        if (!chunks || chunks.length === 0) {
+          setStatus(chunks
+            ? 'Нет новых локальных изменений для отправки.'
+            : 'Один элемент больше 4096 байт даже в отдельном пакете. Сократите текст; все данные остались на устройстве.');
+          return false;
+        }
+        const packets = [];
+        let added = false;
+        for (const chunk of chunks) {
+          const existing = state.pendingPackages.find(packet => samePacketBody(packet, chunk.body));
+          if (existing) {
+            packets.push(existing);
+            continue;
+          }
+          const packet = {
+            clientId: chunk.clientId,
+            data: JSON.stringify({ clientId: chunk.clientId, ...chunk.body }),
+          };
+          state.pendingPackages.push(packet);
+          packets.push(packet);
+          added = true;
+        }
+        // Все порции сохраняются ДО sendData и не снимаются с pending после вызова.
+        if (added && !persist()) return false;
+        if (packets.length === 1) return resendExistingPacket(packets[0]);
+        const delivered = sendStoredPackage(packets[0]);
+        renderAll();
+        setStatus(delivered
+          ? `Передана порция 1 из ${packets.length}; clientId ${packets[0].clientId}. После ответа бота удалите подтверждённый пакет и отправьте следующий отдельной кнопкой.`
+          : `Порция с clientId ${packets[0].clientId} не передана; все ${packets.length} порций остались pending.`);
+        return delivered;
+      }
+
+      function sendStoredPackage(packet) {
+        if (!telegram || typeof telegram.sendData !== 'function' || !telegram.initData) {
+          setStatus('Повтор доступен внутри Telegram. Pending-пакеты сохранены на устройстве.');
+          return false;
+        }
+        // Повтор тоже предваряем сохранением: SDK может закрыть Mini App сразу после sendData.
+        if (!persist()) return false;
+        try {
+          telegram.sendData(packet.data);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+
+      function resendExistingPacket(packet) {
+        const delivered = sendStoredPackage(packet);
+        renderAll();
+        setStatus(delivered
+          ? `Передано боту; повторить можно, пока не увидишь результат в чате. Пакет ${packet.clientId} не изменился.`
+          : 'Пакет не передан. Он сохранён с прежним clientId и доступен для повторной отправки.');
+        return delivered;
+      }
+
+      function retryPendingPackages() {
+        const packet = state.pendingPackages[0];
+        if (!packet) {
+          setStatus('Нет сохранённых pending-пакетов для повтора.');
+          return;
+        }
+        const delivered = sendStoredPackage(packet);
+        renderAll();
+        setStatus(delivered
+          ? `Передан один пакет; clientId ${packet.clientId} не изменился. Он остаётся pending до ручного удаления после ответа бота.`
+          : `Пакет ${packet.clientId} не передан и остался pending.`);
+      }
+
+      function deletePendingPackage(clientId) {
+        const previous = state.pendingPackages;
+        const next = previous.filter(packet => packet.clientId !== clientId);
+        if (next.length === previous.length) return;
+        state.pendingPackages = next;
+        if (!persist()) {
+          state.pendingPackages = previous;
+          renderAll();
+          return;
+        }
+        renderAll();
+        setStatus(`Пакет ${clientId} удалён из pending только на этом устройстве. Подтверждённые ботом данные остаются сохранёнными.`);
+      }
+
+      function sendNote(id) {
+        const note = state.notes.find(item => item.id === id);
+        if (!note) return;
+        const body = notePayload(note);
+        const existing = state.pendingPackages.find(packet =>
+          JSON.parse(packet.data).notes.some(item => item.id === body.id && item.text === body.text),
+        );
+        if (existing) {
+          resendExistingPacket(existing);
+          return;
+        }
+        transmit({ version: 1, notes: [body], resources: [], tasks: [] });
+      }
+
+      function sendTask(id) {
+        const task = state.tasks.find(item => item.id === id);
+        if (!task) return;
+        const body = taskPayload(task);
+        const serialized = JSON.stringify(body);
+        const existing = state.pendingPackages.find(packet =>
+          JSON.parse(packet.data).tasks.some(item => JSON.stringify(item) === serialized),
+        );
+        if (existing) {
+          resendExistingPacket(existing);
+          return;
+        }
+        transmit({ version: 1, notes: [], resources: [], tasks: [body] });
+      }
+
+      function sendAll() {
+        const notes = state.notes.filter(item => item.pending);
+        const tasks = state.tasks.filter(item => item.pending);
+        const resources = pendingResources();
+        if (notes.length + tasks.length + resources.length === 0) {
+          setStatus('Нет новых ожидающих данных. Для неподтверждённой отправки используйте «Повторить / отправить следующий пакет».');
+          return;
+        }
+        transmit({
+          version: 1,
+          notes: notes.map(notePayload),
+          resources,
+          tasks: tasks.map(taskPayload),
+        });
+      }
+
+      function facetFor(text) {
+        if (/сон|спорт|тренир|болез|болит|головн|устал/i.test(text)) return 'body';
+        if (/прочитал|написал|курс|проект|доклад|книг|документ/i.test(text)) return 'mind';
+        if (/встреч|звон|выступлен|созвон/i.test(text)) return 'voice';
+        if (/отчёт|документ|порядок|организ/i.test(text)) return 'work';
+        return null;
+      }
+
+      function renderDashboard() {
+        const counts = { mind: 0, work: 0, voice: 0, body: 0 };
+        for (const note of state.notes) {
+          const facet = facetFor(note.text);
+          if (facet) counts[facet]++;
+        }
+        for (const facet of Object.keys(counts)) byId(`facet-${facet}`).textContent = String(counts[facet]);
+        byId('dashboard-open-tasks').textContent = String(state.tasks.filter(task => !task.done).length);
+        const today = state.resources[localDate()] || {};
+        const drop = byId('dashboard-drop');
+        const details = byId('dashboard-drop-details');
+        if (today.entry && today.exit) {
+          const head = today.entry.head - today.exit.head;
+          const body = today.entry.body - today.exit.body;
+          const mood = today.entry.mood - today.exit.mood;
+          drop.textContent = String(head + body + mood);
+          details.textContent = `Голова ${head}; тело ${body}; настрой ${mood}. Расчёт: вход минус выход.`;
+        } else {
+          drop.textContent = '—';
+          details.textContent = 'Сохраните входной и выходной замеры за сегодня.';
+        }
+      }
+
+      function makeButton(text, handler, primary = false) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `button small${primary ? ' primary' : ''}`;
+        button.textContent = text;
+        button.addEventListener('click', handler);
+        return button;
+      }
+
+      function emptyList(container, message) {
+        const empty = document.createElement('p');
+        empty.className = 'empty';
+        empty.textContent = message;
+        container.append(empty);
+      }
+
+      function renderNotes() {
+        const list = byId('notes-list');
+        list.replaceChildren();
+        if (state.notes.length === 0) {
+          emptyList(list, 'Заметок пока нет. Добавленные записи не исчезнут после перезагрузки.');
+          return;
+        }
+        for (const note of [...state.notes].reverse()) {
+          const article = document.createElement('article');
+          article.className = 'list-item';
+          const text = document.createElement('p');
+          text.textContent = note.text;
+          const meta = document.createElement('small');
+          meta.textContent = 'Сохранено локально; передать или повторить можно кнопкой ниже. Результат смотри в чате.';
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+          actions.append(makeButton('Отправить / повторить', () => sendNote(note.id), note.pending));
+          article.append(text, meta, actions);
+          list.append(article);
+        }
+      }
+
+      function measureDescription(measure) {
+        if (!measure) return 'не сохранён';
+        return `голова ${measure.head}, тело ${measure.body}, настрой ${measure.mood}; результат отправки смотри в чате`;
+      }
+
+      function renderResource() {
+        byId('resource-date').textContent = localDate();
+        const today = state.resources[localDate()] || {};
+        byId('resource-saved').textContent = `Вход: ${measureDescription(today.entry)}. Выход: ${measureDescription(today.exit)}.`;
+      }
+
+      function openReschedule(id) {
+        const task = state.tasks.find(item => item.id === id && !item.done);
+        if (!task) return;
+        rescheduleTaskId = id;
+        byId('reschedule-task-name').textContent = `${task.text}; текущий срок: ${task.due || 'не задан'}`;
+        byId('reschedule-date').value = task.due || localDate();
+        byId('reschedule-reason').value = '';
+        byId('reschedule-form').hidden = false;
+        byId('reschedule-date').focus();
+      }
+
+      function closeReschedule() {
+        rescheduleTaskId = null;
+        byId('reschedule-form').hidden = true;
+        byId('reschedule-form').reset();
+      }
+
+      function completeTask(id) {
+        const task = state.tasks.find(item => item.id === id && !item.done);
+        if (!task) return;
+        task.done = true;
+        task.doneDate = localDate();
+        task.pending = true;
+        if (rescheduleTaskId === id) closeReschedule();
+        persist();
+        renderAll();
+        setStatus('Задача закрыта локально. Не забудьте передать изменение боту.');
+      }
+
+      function renderTasks() {
+        const list = byId('tasks-list');
+        list.replaceChildren();
+        if (state.tasks.length === 0) {
+          emptyList(list, 'Задач пока нет. Дедлайн без причины добавить нельзя.');
+          return;
+        }
+        for (const task of [...state.tasks].reverse()) {
+          const article = document.createElement('article');
+          article.className = `list-item${task.done ? ' done' : ''}`;
+          const text = document.createElement('p');
+          text.textContent = task.text;
+          const meta = document.createElement('small');
+          const status = task.done ? `закрыта ${task.doneDate}` : 'открыта';
+          meta.textContent = `${status}; срок: ${task.due || 'не задан'}; переносов: ${task.reschedules.length}; результат отправки смотри в чате`;
+          const idLine = document.createElement('small');
+          idLine.textContent = `ID: ${task.id}`;
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+          if (!task.done) {
+            actions.append(
+              makeButton('Отметить выполненной', () => completeTask(task.id), true),
+              makeButton('Перенести', () => openReschedule(task.id)),
+            );
+          }
+          if (task.pending) actions.append(makeButton('Передать боту', () => sendTask(task.id)));
+          article.append(text, meta, idLine, actions);
+          list.append(article);
+        }
+      }
+
+      function renderPending() {
+        const count = state.notes.filter(item => item.pending).length
+          + state.tasks.filter(item => item.pending).length
+          + pendingResources().length;
+        byId('pending-count').textContent = count === 0 && state.pendingPackages.length === 0
+          ? 'Нет ожидающих данных'
+          : `Локальных изменений: ${count}; пакетов для повтора: ${state.pendingPackages.length}`;
+        byId('send-all').disabled = count === 0;
+        byId('retry-all').hidden = state.pendingPackages.length === 0;
+        const list = byId('pending-packages');
+        list.replaceChildren();
+        state.pendingPackages.forEach((packet, index) => {
+          const article = document.createElement('article');
+          article.className = 'list-item';
+          const meta = document.createElement('small');
+          meta.textContent = `Порция ${index + 1} из ${state.pendingPackages.length}; clientId ${packet.clientId}; ${new TextEncoder().encode(packet.data).byteLength} байт.`;
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+          actions.append(makeButton('Удалить после ответа бота', () => deletePendingPackage(packet.clientId)));
+          article.append(meta, actions);
+          list.append(article);
+        });
+      }
+
+      function renderAll() {
+        renderDashboard();
+        renderNotes();
+        renderResource();
+        renderTasks();
+        renderPending();
+      }
+
+      function showScreen(name) {
+        for (const section of document.querySelectorAll('main > section')) section.hidden = section.id !== `screen-${name}`;
+        for (const button of document.querySelectorAll('nav button')) {
+          const active = button.dataset.screen === name;
+          button.classList.toggle('active', active);
+          if (active) button.setAttribute('aria-current', 'page');
+          else button.removeAttribute('aria-current');
+        }
+      }
+
+      for (const button of document.querySelectorAll('nav button')) {
+        button.addEventListener('click', () => showScreen(button.dataset.screen));
+      }
+
+      for (const name of ['head', 'body', 'mood']) {
+        byId(`slider-${name}`).addEventListener('input', event => {
+          byId(`value-${name}`).textContent = event.target.value;
+        });
+      }
+
+      byId('note-form').addEventListener('submit', event => {
+        event.preventDefault();
+        const input = byId('note-text');
+        const text = input.value.trim();
+        if (!text) {
+          setStatus('Введите непустой текст заметки.');
+          return;
+        }
+        state.notes.push({ id: createId('note'), text, pending: true });
+        if (!persist()) return;
+        input.value = '';
+        renderAll();
+        setStatus('Заметка добавлена и сохранена локально. Теперь её можно отправить боту.');
+      });
+
+      function saveResource(phase) {
+        const date = localDate();
+        if (!state.resources[date]) state.resources[date] = {};
+        state.resources[date][phase] = {
+          head: Number(byId('slider-head').value),
+          body: Number(byId('slider-body').value),
+          mood: Number(byId('slider-mood').value),
+          pending: true,
+        };
+        if (!persist()) return;
+        renderAll();
+        setStatus(`${phase === 'entry' ? 'Входной' : 'Выходной'} замер сохранён локально за ${date}.`);
+      }
+
+      byId('save-entry').addEventListener('click', () => saveResource('entry'));
+      byId('save-exit').addEventListener('click', () => saveResource('exit'));
+
+      byId('task-form').addEventListener('submit', event => {
+        event.preventDefault();
+        const text = byId('task-text').value.trim();
+        const due = byId('task-due').value;
+        const reason = byId('task-reason').value.trim();
+        if (!text) {
+          setStatus('Введите текст задачи.');
+          return;
+        }
+        if (due && !isRealDate(due)) {
+          setStatus('Укажите существующую дату дедлайна.');
+          return;
+        }
+        if (due && !reason) {
+          setStatus('У задачи с дедлайном обязательна причина срока.');
+          return;
+        }
+        if (!due && reason) {
+          setStatus('Причина используется только вместе с дедлайном. Выберите дату или очистите причину.');
+          return;
+        }
+        state.tasks.push({
+          id: createId('task'),
+          text,
+          date: localDate(),
+          ...(due ? { due, reason } : {}),
+          done: false,
+          reschedules: [],
+          pending: true,
+        });
+        if (!persist()) return;
+        byId('task-form').reset();
+        closeReschedule();
+        renderAll();
+        setStatus('Задача добавлена локально. Передайте её боту отдельно или общим пакетом.');
+      });
+
+      byId('reschedule-form').addEventListener('submit', event => {
+        event.preventDefault();
+        const task = state.tasks.find(item => item.id === rescheduleTaskId && !item.done);
+        if (!task) {
+          closeReschedule();
+          setStatus('Задача не найдена или уже закрыта.');
+          return;
+        }
+        const to = byId('reschedule-date').value;
+        const reason = byId('reschedule-reason').value.trim();
+        if (!isRealDate(to) || !reason) {
+          setStatus('Для переноса нужны существующая дата и обязательная причина.');
+          return;
+        }
+        task.reschedules.push({ ...(task.due ? { from: task.due } : {}), to, reason, at: localDate() });
+        task.due = to;
+        task.reason = reason;
+        task.pending = true;
+        if (!persist()) return;
+        closeReschedule();
+        renderAll();
+        setStatus('Перенос сохранён локально вместе с причиной.');
+      });
+
+      byId('cancel-reschedule').addEventListener('click', closeReschedule);
+      byId('send-all').addEventListener('click', sendAll);
+      byId('retry-all').addEventListener('click', retryPendingPackages);
+
+      if (telegram) {
+        try {
+          telegram.ready();
+          telegram.expand();
+        } catch {
+          setStatus('Telegram SDK загружен, но не смог инициализировать окно. Локальное редактирование доступно.');
+        }
+      }
+      const canSend = Boolean(telegram && typeof telegram.sendData === 'function' && telegram.initData);
+      byId('connection-status').textContent = canSend
+        ? 'Telegram подключён'
+        : 'Локальный режим: для отправки откройте через /app в Telegram';
+      if (!storageAvailable) setStatus('localStorage недоступен или повреждён. Проверьте настройки браузера перед вводом данных.');
+
+      renderAll();
+      showScreen('dashboard');
+    })();
+  </script>
+</body>
+</html>
